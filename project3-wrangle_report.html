@@ -11878,7 +11878,7 @@ div#notebook {
 <li>Check <code>expanded_urls</code> - some have multiple links, and some are duplicates which usually correspond with the retweet status. These will be removed since they are not original tweets</li>
 <li>Check the <code>rating_numerator</code> distribution of values. Manually check some high and low numerators</li>
 <li>Check the <code>rating_denominator</code> distribution of values. Manually check where denominator != 10, which is valid for some tweets but need to be fixed in some others (e.g. sometimes the extraction parsed dates as ratings)</li>
-<li>Check the stage variables <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> - these columns have the string 'None' when actually data is missing which should be a <code>NaN</code>. There are cases where a tweet might be classified with multiple stages, so if use one column, some rows might have multiple stages. Would be easier to do analysis with the original 4 columns and booleans for values. Many tweets do not have any stage classification, so check the text of the tweet to see if can get a stage for these tweets. </li>
+<li>Check the stage variables <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> - these columns have the string 'None' when actually data is missing which should be a <code>NaN</code>. There are cases where a tweet might be classified with multiple stages. Many tweets do not have any stage classification, so check the text of the tweet to see if can get a stage for these tweets. These 4 stages can be combined into one column <code>stage</code>    </li>
 <li>Check the <code>name</code> distribution of values. Lower-case words such as 'a', 'the', 'an', 'very', ... are not valid names - wrongly extracted. Also, 'None' should be <code>NaN</code></li>
 </ul>
 
@@ -11902,12 +11902,13 @@ div#notebook {
 <li><strong>[q1]</strong> incorrect values for <code>rating_numerator</code> and <code>rating_denominator</code> (e.g. 'Happy 4/20 from the squad! 13/10 for all' should be 13/10, not 4/20)</li>
 <li><strong>[q2]</strong> incorrect values for dog <code>name</code> ('a', 'the', 'an', 'very', ...)</li>
 <li><strong>[q3]</strong> missing <code>name</code> should be <code>NaN</code> instead of string 'None'</li>
-<li><strong>[q4]</strong> missing values for dog stages <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> (e.g. 'This is Gary. He couldn't miss this puppertunity for a selfie...'), and convert <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> to booleans with <code>True</code>/<code>False</code> values</li>
+<li><strong>[q4]</strong> missing values for dog stages <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> (e.g. 'This is Gary. He couldn't miss this _pupper_tunity for a selfie...')</li>
 <li><strong>[q5]</strong> Remove retweets (only want the original ratings) based on <code>retweeted_status_id</code> and duplicate <code>expanded_urls</code></li>
 <li><strong>[q6]</strong> <code>timestamp</code> should have datetime values, not strings</li>
 <li><strong>[q7]</strong> split <code>source</code> into <code>source_link</code> and <code>source</code>: <a href="http://twitter.com/download/iphone" rel="nofollow">Twitter for iPhone</a> -&gt; "<a href="http://twitter.com/download/iphone">http://twitter.com/download/iphone</a>" and "Twitter for iPhone"</li>
 <li><strong>[q8]</strong> add 3 columns for the combined prediction (p1, p2, p3) data - use the highest confidence prediction that is a dog type (in order: p1 &gt; p2 &gt; p3) (do after <code>predictions</code> table merged into <code>archive</code> table)  </li>
 <li><strong>[q9]</strong> add a column calculating the <code>rating_score</code> = <code>rating_numerator</code>/<code>rating_denominator</code> (even though the numerator can be greater than denominator, still need to normalise the scores for later analysis)</li>
+<li><strong>[q10]</strong> delete columns: <code>retweeted_status_id</code>, <code>retweeted_status_user_id</code>, <code>retweeted_status_timestamp</code> - all NaNs since deleted the retweet rows  </li>
 </ul>
 
 </div>
@@ -11928,7 +11929,7 @@ div#notebook {
 <p><code>archive</code>, <code>predictions</code> and <code>counts</code> table</p>
 <ul>
 <li><strong>[t1]</strong> merge <code>counts</code> table data: <code>retweet_count</code> and <code>favorite_count</code> into main dataframe <code>archive</code>, joining on <code>id</code> to <code>tweet_id</code>, and merge prediction information from <code>predictions</code> into main dataframe <code>archive</code> </li>
-<li><strong>[t2]</strong> delete columns: <code>retweeted_status_id</code>, <code>retweeted_status_user_id</code>, <code>retweeted_status_timestamp</code> - all NaNs since deleted the retweet rows</li>
+<li><strong>[t2]</strong> merge <code>doggo</code>, <code>floofer</code>, <code>pupper</code>, <code>puppo</code> into a single column <code>stage</code></li>
 </ul>
 
 </div>
@@ -11957,8 +11958,7 @@ div#notebook {
 <div class="text_cell_render border-box-sizing rendered_html">
 <h4 id="Missing-Data">Missing Data<a class="anchor-link" href="#Missing-Data">&#182;</a></h4><p><strong>[q1]</strong> Change incorrectly extracted <code>rating_numerator</code> and <code>rating_denominator</code> for the ratings to the manually calculated values. Then remove tweets with missing <code>rating_numerator</code> or <code>rating_denominator</code><br>
 <strong>[q2]</strong> <strong>[q3]</strong> Replace wrong values of <code>name</code> ('a', 'the', 'an', 'very', ...) with <code>NaN</code>, if actual name cannot be manually extracted from the text. Replace string <code>'None'</code> with <code>NaN</code><br>
-<strong>[q4]</strong> Check tweets with missing <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> and find in the text for the word(s). Then if found, change the 'None' to <code>True</code>. Change <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> columns to boolean, replace 'None' with <code>False</code> and replace all not 'None's with <code>True</code><br>
-<strong>[q5]</strong> Remove rows if <code>retweeted_status_id is not NaN</code> and if <code>expanded_urls</code> are same as another tweet</p>
+<strong>[q4]</strong> Check tweets with missing <code>doggo</code>/<code>floofer</code>/<code>pupper</code>/<code>puppo</code> and find in the text for the word(s). Then if found, change the 'None' to the name of the column (the category name)</p>
 
 </div>
 </div>
@@ -11968,7 +11968,7 @@ div#notebook {
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h4 id="Tidiness">Tidiness<a class="anchor-link" href="#Tidiness">&#182;</a></h4><p><strong>[t1]</strong> Join <code>archive</code> table with <code>counts</code> table with <code>archive-tweed_id</code> = <code>counts-id</code>, to add <code>retweet_count</code> and <code>favorite_count</code> into the main table. Join <code>archive</code> table with <code>predictions</code> table with <code>archive-tweed_id</code> = <code>predictions-tweet_id</code><br>
-<strong>[t2]</strong> delete columns: <code>retweeted_status_id</code>, <code>retweeted_status_user_id</code>, <code>retweeted_status_timestamp</code> from the final joined table</p>
+<strong>[t2]</strong> Create new column <code>stage</code> including all the non-'None' values from <code>doggo</code>, <code>floofer</code>, <code>pupper</code>, <code>puppo</code> columns (e.g. <code>doggo</code>, <code>doggo-floofer</code>). If all categories were 'None', set to <code>np.nan</code></p>
 
 </div>
 </div>
@@ -11977,10 +11977,12 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h4 id="Other-Quality-Issues">Other Quality Issues<a class="anchor-link" href="#Other-Quality-Issues">&#182;</a></h4><p><strong>[q6]</strong> Convert <code>timestamp</code> to datetime format<br>
+<h4 id="Other-Quality-Issues">Other Quality Issues<a class="anchor-link" href="#Other-Quality-Issues">&#182;</a></h4><p><strong>[q5]</strong> Remove rows if <code>retweeted_status_id is not NaN</code> and if <code>expanded_urls</code> are same as another tweet<br>
+<strong>[q6]</strong> Convert <code>timestamp</code> to datetime format<br>
 <strong>[q7]</strong> Split <code>source</code> into new columns <code>source_link</code> (the URL after href=)  and <code>source</code> (the name between the <code>&lt;a&gt;</code> tags)<br>
 <strong>[q8]</strong> add 3 columns <code>predict</code>, <code>predict_percent</code>, <code>predict_dog</code> that combines the predictions in <code>p1</code>, <code>p2</code>, <code>p3</code><br>
-<strong>[q9]</strong> add a column calculating the <code>rating_score</code> = <code>rating_numerator</code>/<code>rating_denominator</code></p>
+<strong>[q9]</strong> add a column calculating the <code>rating_score</code> = <code>rating_numerator</code>/<code>rating_denominator</code><br>
+<strong>[q10]</strong> delete columns: <code>retweeted_status_id</code>, <code>retweeted_status_user_id</code>, <code>retweeted_status_timestamp</code> from the final joined table</p>
 
 </div>
 </div>
